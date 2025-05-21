@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FLEX라이더스 대시보드 메인</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: 'Pretendard', sans-serif; background-color: #f5f5f5; margin: 0; padding: 1rem; color: #333; }
+    h2 { text-align: center; margin-bottom: 1.5rem; }
+    #loading {
+  text-align: center;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  color: #888;
+}
+    .dot { animation: blink 1.5s infinite; }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+    .shake { display: inline-block; animation: shake 0.5s infinite alternate; }
+    @keyframes shake { 0% { transform: translateX(0); } 100% { transform: translateX(3px); } }
+    .center-box, .card, .peak-grid-row { background: white; border-radius: 12px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); margin-bottom: 1.5rem; padding: 1rem; }
+    .center-box { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .center-box .title { font-size: 1rem; color: #888; margin-bottom: 0.5rem; }
+    .center-box .main { font-size: 1.8rem; font-weight: bold; margin-top: 1rem; }
+    .center-box .desc { font-size: 0.9rem; color: #555; margin-top: 0.3rem; }
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
+    .card-title { font-size: 1rem; margin-bottom: 0.5rem; color: #666; }
+    .card-value { font-size: 1.5rem; font-weight: bold; }
+    .section-title { font-weight: bold; font-size: 1.1rem; margin-bottom: 1rem; }
+    .peak-grid-row { display: grid; grid-template-columns: repeat(5, 1fr); text-align: center; gap: 1rem; }
+    .peak-col { border-right: 1px solid #ddd; border-radius: 10px; padding: 0.5rem; }
+    .peak-col:last-child { border-right: none; }
+    .highlight { background-color: #e6f7ff !important; box-shadow: 0 0 0 2px #3498db inset; }
+  </style>
+</head>
+<body>
+  <div id="loading">🛵 플렉스기사님이 데이터를 배달 중입니다<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
+  <h2>플렉스라이더스 대시보드</h2>
+  <div class="center-box" id="currentDataBox">
+    <div class="title" id="currentTimeLabel">현재 시간대</div>
+    <div style="width: 100%; max-width: 300px;">
+      <canvas id="completionChart"></canvas>
+    </div>
+    <div class="main" id="currentProgress">-</div>
+    <div class="desc" id="currentDesc">-</div>
+  </div>
+  <div class="card-grid">
+    <div class="card"><div class="card-title">거절 / 무시</div><div class="card-value" id="rejectCount">-</div></div>
+    <div class="card"><div class="card-title">거절율</div><div class="card-value" id="rejectRate">-</div></div>
+  </div>
+  <div class="section-title">시간대별 달성 현황</div>
+  <div style="font-size: 0.85rem; margin-bottom: 0.3rem; font-weight: bold; color: #555;">달성 / 목표 / 달성률</div>
+  <div class="peak-grid-row">
+    <div class="peak-col" id="아침 논피크"><div class="peak-title">아침 논피크</div><div class="peak-val"><span id="morningDone">-</span> / <span id="morningGoal">-</span> / <span id="morningRate">-</span></div></div>
+    <div class="peak-col" id="점심 피크"><div class="peak-title">점심 피크</div><div class="peak-val"><span id="lunchDone">-</span> / <span id="lunchGoal">-</span> / <span id="lunchRate">-</span></div></div>
+    <div class="peak-col" id="오후 논피크"><div class="peak-title">오후 논피크</div><div class="peak-val"><span id="afternoonDone">-</span> / <span id="afternoonGoal">-</span> / <span id="afternoonRate">-</span></div></div>
+    <div class="peak-col" id="저녁 피크"><div class="peak-title">저녁 피크</div><div class="peak-val"><span id="eveningDone">-</span> / <span id="eveningGoal">-</span> / <span id="eveningRate">-</span></div></div>
+    <div class="peak-col" id="밤 논피크"><div class="peak-title">밤 논피크</div><div class="peak-val"><span id="nightDone">-</span> / <span id="nightGoal">-</span> / <span id="nightRate">-</span></div></div>
+  </div>
+  <div class="section-title">기사별 통계</div>
+  <input type="text" id="searchInput" placeholder="이름 또는 전화번호 끝자리 검색" style="width: 100%; padding: 0.5rem; margin-bottom: 1rem; font-size: 1rem; border: 1px solid #ccc; border-radius: 8px;">
+  <table id="riderTable" style="width: 100%; border-collapse: collapse; font-size: 0.9rem; text-align: center; table-layout: fixed;">
+    <thead><tr style="background: #e0e0e0;"><th>이름</th><th>전화번호</th><th>논피크</th><th>점심피크</th><th>저녁피크</th><th>총완료수</th><th>거절수</th><th>거절률</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <script>
+    const zoneMap = {
+      '아침 논피크': { goal: '아침논피크목표', done: '아침논피크완료', rate: '아침논피크달성률', ids: ['morningDone', 'morningGoal', 'morningRate'] },
+      '점심 피크': { goal: '점심피크목표', done: '점심피크완료', rate: '점심피크달성률', ids: ['lunchDone', 'lunchGoal', 'lunchRate'] },
+      '오후 논피크': { goal: '오후논피크목표', done: '오후피크완료', rate: '오후피크달성률', ids: ['afternoonDone', 'afternoonGoal', 'afternoonRate'] },
+      '저녁 피크': { goal: '저녁피크목표', done: '저녁피크완료', rate: '저녁피크달성률', ids: ['eveningDone', 'eveningGoal', 'eveningRate'] },
+      '밤 논피크': { goal: '밤논피크목표', done: '밤논피크완료', rate: '밤논피크달성률', ids: ['nightDone', 'nightGoal', 'nightRate'] }
+    };
+
+    let chart;
+    document.addEventListener('DOMContentLoaded', async () => {
+      document.getElementById('loading').style.display = 'block';
+      await Promise.all([loadMainBoard(), loadRiderData()]);
+      document.getElementById('loading').style.display = 'none';
+    });
+
+    async function loadMainBoard() {
+      const res = await fetch("https://script.google.com/macros/s/AKfycbwgV487zKyFti4PNzuYume4UOn0KVhLK0BVvg5810UaBfkoc7c9ZytUrX0_opaj7kskgA/exec");
+      const mainData = await res.json();
+      const mainRow = mainData[0];
+      const hour = new Date().getHours();
+      let zone = null;
+      if (hour >= 6 && hour < 11) zone = '아침 논피크';
+      else if (hour >= 11 && hour < 13) zone = '점심 피크';
+      else if (hour >= 13 && hour < 17) zone = '오후 논피크';
+      else if (hour >= 17 && hour < 20) zone = '저녁 피크';
+      else if (hour >= 20 || hour < 3) zone = '밤 논피크';
+      document.getElementById(zone)?.classList.add('highlight');
+      if (!zone || !zoneMap[zone]) {
+        console.warn('Invalid zone:', zone);
+        document.getElementById('loading').style.display = 'none';
+        return;
+      }
+      const fields = zoneMap[zone];
+      const goal = parseFloat(mainRow[fields.goal]);
+      const done = parseFloat(mainRow[fields.done]);
+      const rate = (parseFloat(mainRow[fields.rate]) * 100).toFixed(1) + '%';
+      document.getElementById('currentTimeLabel').innerText = zone;
+      document.getElementById('currentProgress').innerText = `${done} / ${goal}`;
+      document.getElementById('currentDesc').innerText = `달성률 ${rate}`;
+      chart.data.datasets[0].data = [done, Math.max(0, goal - done)];
+      chart.update();
+      for (const z in zoneMap) {
+        const ids = zoneMap[z].ids;
+        document.getElementById(ids[0]).innerText = mainRow[zoneMap[z].done];
+        document.getElementById(ids[1]).innerText = mainRow[zoneMap[z].goal];
+        document.getElementById(ids[2]).innerText = (parseFloat(mainRow[zoneMap[z].rate]) * 100).toFixed(1) + '%';
+      }
+      document.getElementById('rejectCount').innerText = mainRow['거절/무시'];
+      const rejectRateVal = parseFloat(mainRow['거절율']) * 100;
+      const rejectRateEl = document.getElementById('rejectRate');
+      rejectRateEl.innerText = rejectRateVal.toFixed(1) + '%';
+      if (rejectRateVal >= 10) {
+        rejectRateEl.style.color = '#e74c3c';
+        rejectRateEl.style.fontWeight = 'bold';
+        rejectRateEl.innerHTML += ' <span class="shake">😡</span>';
+      } else {
+        rejectRateEl.style.color = '#000';
+        rejectRateEl.style.fontWeight = 'normal';
+      }
+    }
+
+    async function loadRiderData() {
+      const res = await fetch("https://script.google.com/macros/s/AKfycbxnx-BaJMffD37MDBVqqEm0TDgVIUOO2WdpzcR0VQX5VJI8O1OpUObIwvvkgbfreRMFog/exec");
+      const riderData = await res.json();
+      const tbody = document.querySelector('#riderTable tbody');
+      tbody.innerHTML = '';
+      riderData.forEach(row => {
+        console.log('rider row', row);
+        if (!row || row['거절수'] === undefined || row['총완료수'] === undefined) return;
+
+        const name = row['이름'] ? row['이름'].slice(0, 1) + '**' : '';
+        const phone = row['전화번호']?.toString().slice(-4) || '';
+
+        const reject = Number(row['거절수']) || 0;
+        const total = Number(row['총완료수']) || 0;
+        const denom = reject + total;
+        const rate = denom > 0 ? (reject / denom) * 100 : 0;
+
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-name', name);
+        tr.setAttribute('data-phone', phone);
+        tr.innerHTML = `
+          <td>${name}</td><td>${phone}</td><td>${row['논피크']}</td><td>${row['점심피크']}</td><td>${row['저녁피크']}</td><td>${row['총완료수']}</td><td>${row['거절수']}</td>
+          <td style="color: ${rate >= 10 ? '#e74c3c' : '#000'}; font-weight: ${rate >= 10 ? 'bold' : 'normal'};">
+            ${rate.toFixed(1)}% ${rate >= 10 ? '<span class="shake">😡</span>' : ''}
+          </td>`;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('searchInput').addEventListener('input', function() {
+        const value = this.value.trim();
+        const rows = tbody.querySelectorAll('tr');
+        rows.forEach(row => {
+          const name = row.getAttribute('data-name');
+          const phone = row.getAttribute('data-phone');
+          const match = name.includes(value) || phone.includes(value);
+          row.style.display = match || value === '' ? '' : 'none';
+        });
+      });
+    }
+  </script>
+</body>
+</html>
