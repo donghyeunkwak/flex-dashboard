@@ -57,8 +57,8 @@
   </div>
   <div class="section-title">시간대별 달성 현황</div>
   <div style="font-size: 0.85rem; margin-bottom: 0.3rem; font-weight: bold; color: #555;">달성 / 목표 / 달성률</div>
-  <div class="peak-grid-row">
-    <div class="peak-col" id="아침 논피크"><div class="peak-title">아침 논피크</div><div class="peak-val"><span id="morningDone">-</span> / <span id="morningGoal">-</span> / <span id="morningRate">-</span></div></div>
+  <div class="peak-grid-row" style="overflow-x: auto; display: flex; flex-wrap: nowrap;">
+    <div class="peak-col" style="min-width: 150px; flex-shrink: 0;" id="아침 논피크"><div class="peak-title">아침 논피크</div><div class="peak-val"><span id="morningDone">-</span> / <span id="morningGoal">-</span> / <span id="morningRate">-</span></div></div>
     <div class="peak-col" id="점심 피크"><div class="peak-title">점심 피크</div><div class="peak-val"><span id="lunchDone">-</span> / <span id="lunchGoal">-</span> / <span id="lunchRate">-</span></div></div>
     <div class="peak-col" id="오후 논피크"><div class="peak-title">오후 논피크</div><div class="peak-val"><span id="afternoonDone">-</span> / <span id="afternoonGoal">-</span> / <span id="afternoonRate">-</span></div></div>
     <div class="peak-col" id="저녁 피크"><div class="peak-title">저녁 피크</div><div class="peak-val"><span id="eveningDone">-</span> / <span id="eveningGoal">-</span> / <span id="eveningRate">-</span></div></div>
@@ -98,17 +98,20 @@
       else if (hour >= 11 && hour < 13) zone = '점심 피크';
       else if (hour >= 13 && hour < 17) zone = '오후 논피크';
       else if (hour >= 17 && hour < 20) zone = '저녁 피크';
-      else if (hour >= 20 || hour < 3) zone = '밤 논피크';
+      else zone = '밤 논피크';
       document.getElementById(zone)?.classList.add('highlight');
-      if (!zone || !zoneMap[zone]) {
+      if (!zoneMap[zone]) {
         console.warn('Invalid zone:', zone);
+        document.getElementById('currentTimeLabel').innerText = zone;
+        document.getElementById('currentProgress').innerText = `데이터 없음`;
+        document.getElementById('currentDesc').innerText = `이 시간대는 별도 통계가 없습니다.`;
         document.getElementById('loading').style.display = 'none';
         return;
       }
       const fields = zoneMap[zone];
-      const goal = parseFloat(mainRow[fields.goal]);
-      const done = parseFloat(mainRow[fields.done]);
-      const rate = (parseFloat(mainRow[fields.rate]) * 100).toFixed(1) + '%';
+      const goal = parseFloat(mainRow[fields.goal]) || 0;
+      const done = parseFloat(mainRow[fields.done]) || 0;
+      const rate = ((parseFloat(mainRow[fields.rate]) || 0) * 100).toFixed(1) + '%';
       document.getElementById('currentTimeLabel').innerText = zone;
       document.getElementById('currentProgress').innerText = `${done} / ${goal}`;
       document.getElementById('currentDesc').innerText = `달성률 ${rate}`;
