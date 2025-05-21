@@ -3,9 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FLEX라이더스 대시보드 메인</title>
+  <title>곽 FLEX 대시보드 메인</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
+    td, th { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+    @media (max-width: 768px) {
+      .peak-grid-row { grid-template-columns: repeat(2, 1fr); }
+      .card-grid { grid-template-columns: 1fr; }
+    }
     body { font-family: 'Pretendard', sans-serif; background-color: #f5f5f5; margin: 0; padding: 1rem; color: #333; }
     h2 { text-align: center; margin-bottom: 1.5rem; }
     #loading {
@@ -37,7 +42,7 @@
 </head>
 <body>
   <div id="loading">🛵 플렉스기사님이 데이터를 배달 중입니다<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
-  <h2>플렉스라이더스 대시보드</h2>
+  <h2>피크별 일간 대시보드</h2>
   <div class="center-box" id="currentDataBox">
     <div class="title" id="currentTimeLabel">현재 시간대</div>
     <div style="width: 100%; max-width: 300px;">
@@ -61,10 +66,12 @@
   </div>
   <div class="section-title">기사별 통계</div>
   <input type="text" id="searchInput" placeholder="이름 또는 전화번호 끝자리 검색" style="width: 100%; padding: 0.5rem; margin-bottom: 1rem; font-size: 1rem; border: 1px solid #ccc; border-radius: 8px;">
-  <table id="riderTable" style="width: 100%; border-collapse: collapse; font-size: 0.9rem; text-align: center; table-layout: fixed;">
+  <div style="overflow-x: auto;">
+  <table id="riderTable" style="width: 100%; border-collapse: collapse; font-size: 0.9rem; text-align: center; table-layout: auto;">
     <thead><tr style="background: #e0e0e0;"><th>이름</th><th>전화번호</th><th>논피크</th><th>점심피크</th><th>저녁피크</th><th>총완료수</th><th>거절수</th><th>거절률</th></tr></thead>
     <tbody></tbody>
   </table>
+</div>
   <script>
     const zoneMap = {
       '아침 논피크': { goal: '아침논피크목표', done: '아침논피크완료', rate: '아침논피크달성률', ids: ['morningDone', 'morningGoal', 'morningRate'] },
