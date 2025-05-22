@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FLEX 대시보드 메인</title>
+  <title>곽 FLEX 대시보드 메인</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     td, th { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
@@ -63,7 +63,7 @@
 <body>
   <div id="loading">🛵 플렉스라이더스님이 데이터를 배달 중입니다<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
 
-  <h2>플렉스라이더스 대시보드</h2>
+  <h2>피크별 일간 대시보드</h2>
 
   <div class="center-box" id="currentDataBox">
     <div class="title" id="currentTimeLabel">현재 시간대</div>
@@ -157,7 +157,16 @@
 
     async function loadRiders() {
       const res = await fetch("https://script.google.com/macros/s/AKfycbxnx-BaJMffD37MDBVqqEm0TDgVIUOO2WdpzcR0VQX5VJI8O1OpUObIwvvkgbfreRMFog/exec");
-      const riders = await res.json();
+      let riders = await res.json();
+
+      riders.forEach(r => {
+        const reject = Number(r['거절수']) || 0;
+        const total = Number(r['총완료수']) || 0;
+        r._rate = (reject + total) > 0 ? (reject / (reject + total)) * 100 : 0;
+      });
+
+      riders.sort((a, b) => b._rate - a._rate);
+
       const tbody = document.querySelector('#riderTable tbody');
       tbody.innerHTML = '';
       riders.forEach(row => {
@@ -165,8 +174,7 @@
         const phone = row['전화번호']?.toString().slice(-4) || '';
         const reject = Number(row['거절수']) || 0;
         const total = Number(row['총완료수']) || 0;
-        const denom = reject + total;
-        const rate = denom > 0 ? (reject / denom) * 100 : 0;
+        const rate = row._rate;
         const tr = document.createElement('tr');
         tr.setAttribute('data-name', name);
         tr.setAttribute('data-phone', phone);
@@ -177,6 +185,7 @@
           </td>`;
         tbody.appendChild(tr);
       });
+
       document.getElementById('searchInput').addEventListener('input', function () {
         const value = this.value.trim();
         const rows = tbody.querySelectorAll('tr');
