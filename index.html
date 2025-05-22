@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>곽 FLEX 대시보드 메인</title>
+  <title>FLEX대시보드 메인</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     td, th { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
     body { font-family: 'Pretendard', sans-serif; background-color: #f5f5f5; margin: 0; padding: 1rem; color: #333; }
     h2 { text-align: center; margin-bottom: 1.5rem; }
+    #updatedTime { text-align: center; font-size: 0.9rem; color: #888; margin-bottom: 1rem; }
     #loading { text-align: center; margin-bottom: 1rem; font-size: 1rem; color: #888; }
     .dot { animation: blink 1.5s infinite; }
     .dot:nth-child(2) { animation-delay: 0.2s; }
@@ -64,7 +65,7 @@
   <div id="loading">🛵 플렉스라이더스님이 데이터를 배달 중입니다<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
 
   <h2>피크별 일간 대시보드</h2>
-
+  <div id="updatedTime">업데이트 시간: -</div>
   <div class="center-box" id="currentDataBox">
     <div class="title" id="currentTimeLabel">현재 시간대</div>
     <div style="width: 100%; max-width: 300px;">
@@ -93,12 +94,13 @@
   <input type="text" id="searchInput" placeholder="이름 또는 전화번호 끝자리 검색" style="width: 100%; padding: 0.5rem; margin-bottom: 1rem; font-size: 1rem; border: 1px solid #ccc; border-radius: 8px;">
   <div style="overflow-x: auto">
     <table id="riderTable" style="width: 100%; border-collapse: collapse; font-size: 0.9rem; text-align: center;">
-      <thead><tr style="background: #e0e0e0;"><th>이름</th><th>전화번호</th><th>논피크</th><th>점심피크</th><th>저녁피크</th><th>총완료수</th><th>거절수</th><th>거절률</th></tr></thead>
+      <thead><tr style="background: #e0e0e0;"><th>이름</th><th>전화번호</th><th>논피</th><th>점피</th><th>저피</th><th>총완료수</th><th>거절수</th><th>거절률</th></tr></thead>
       <tbody></tbody>
     </table>
   </div>
 
   <script>
+
     const hour = new Date().getHours();
     let zone = null;
     if (hour >= 6 && hour < 11) zone = '아침 논피크';
@@ -123,6 +125,7 @@
     async function loadMain() {
       const res = await fetch("https://script.google.com/macros/s/AKfycbwgV487zKyFti4PNzuYume4UOn0KVhLK0BVvg5810UaBfkoc7c9ZytUrX0_opaj7kskgA/exec");
       const d = await res.json();
+      document.getElementById('updatedTime').innerText = `${d[0]['업데이트']}`;
       const zMap = {
         '아침 논피크': ['아침논피크완료','아침논피크목표','아침논피크달성률','morningDone','morningGoal','morningRate'],
         '점심 피크': ['점심피크완료','점심피크목표','점심피크달성률','lunchDone','lunchGoal','lunchRate'],
@@ -150,7 +153,7 @@
       document.getElementById('rejectCount').innerText = d[0]['거절/무시'];
       const rejectRate = parseFloat(d[0]['거절율']) * 100;
       const el = document.getElementById('rejectRate');
-      el.innerHTML = `${rejectRate.toFixed(1)}%` + (rejectRate >= 10 ? ' <span class="shake">😡</span>' : '');
+      el.innerHTML = `${rejectRate.toFixed(1)}%${rejectRate >= 10 ? ' <span class="shake">😡</span>' : ''}`;
       el.style.color = rejectRate >= 10 ? '#e74c3c' : '#000';
       el.style.fontWeight = rejectRate >= 10 ? 'bold' : 'normal';
     }
@@ -179,7 +182,9 @@
         tr.setAttribute('data-name', name);
         tr.setAttribute('data-phone', phone);
         tr.innerHTML = `
-          <td>${name}</td><td>${phone}</td><td>${row['논피크']}</td><td>${row['점심피크']}</td><td>${row['저녁피크']}</td><td>${total}</td><td>${reject}</td>
+          <td>${name}</td><td>${phone}</td>
+          <td>${row['논피크']}</td><td>${row['점심피크']}</td><td>${row['저녁피크']}</td>
+          <td>${total}</td><td>${reject}</td>
           <td style="color: ${rate >= 10 ? '#e74c3c' : '#000'}; font-weight: ${rate >= 10 ? 'bold' : 'normal'};">
             ${rate.toFixed(1)}% ${rate >= 10 ? '<span class="shake">😡</span>' : ''}
           </td>`;
