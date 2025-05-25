@@ -59,6 +59,14 @@
     }
     .peak-col:last-child { border-right: none; }
     .highlight { background-color: #e6f7ff !important; box-shadow: 0 0 0 2px #3498db inset; }
+
+    #riderStatus {
+      margin: 1rem 0;
+      font-size: 0.95rem;
+      color: #444;
+      font-weight: bold;
+      text-align: left;
+    }
   </style>
 </head>
 <body>
@@ -91,16 +99,21 @@
   </div>
 
   <div class="section-title">기사별 통계</div>
+  <div id="riderStatus">기사 현황: -</div>
   <input type="text" id="searchInput" placeholder="이름 또는 전화번호 끝자리 검색" style="width: 100%; padding: 0.5rem; margin-bottom: 1rem; font-size: 1rem; border: 1px solid #ccc; border-radius: 8px;">
   <div style="overflow-x: auto">
     <table id="riderTable" style="width: 100%; border-collapse: collapse; font-size: 0.9rem; text-align: center;">
-      <thead><tr style="background: #e0e0e0;"><th>이름</th><th>전화번호</th><th>논피</th><th>점피</th><th>저피</th><th>총완료수</th><th>거절수</th><th>거절률</th></tr></thead>
+      <thead>
+        <tr style="background: #e0e0e0;">
+          <th>이름</th><th>전화번호</th><th>논피</th><th>점피</th><th>저피</th>
+          <th>총완료수</th><th>거절수</th><th>거절률</th><th>온라인</th>
+        </tr>
+      </thead>
       <tbody></tbody>
     </table>
   </div>
 
   <script>
-
     const hour = new Date().getHours();
     let zone = null;
     if (hour >= 6 && hour < 11) zone = '아침 논피크';
@@ -126,6 +139,10 @@
       const res = await fetch("https://script.google.com/macros/s/AKfycbwgV487zKyFti4PNzuYume4UOn0KVhLK0BVvg5810UaBfkoc7c9ZytUrX0_opaj7kskgA/exec");
       const d = await res.json();
       document.getElementById('updatedTime').innerText = `${d[0]['업데이트']}`;
+      const online = d[0]['온라인'] || '-';
+      const total = d[0]['전체'] || '-';
+      document.getElementById('riderStatus').innerText = `기사 현황: ${online}`;
+
       const zMap = {
         '아침 논피크': ['아침논피크완료','아침논피크목표','아침논피크달성률','morningDone','morningGoal','morningRate'],
         '점심 피크': ['점심피크완료','점심피크목표','점심피크달성률','lunchDone','lunchGoal','lunchRate'],
@@ -133,11 +150,13 @@
         '저녁 피크': ['저녁피크완료','저녁피크목표','저녁피크달성률','eveningDone','eveningGoal','eveningRate'],
         '밤 논피크': ['밤논피크완료','밤논피크목표','밤논피크달성률','nightDone','nightGoal','nightRate']
       };
+
       Object.values(zMap).forEach(([dk, gk, rk, id1, id2, id3]) => {
         document.getElementById(id1).innerText = d[0][dk];
         document.getElementById(id2).innerText = d[0][gk];
         document.getElementById(id3).innerText = (parseFloat(d[0][rk]) * 100).toFixed(1) + '%';
       });
+
       if (zone && zMap[zone]) {
         document.getElementById(zone).classList.add('highlight');
         const [doneKey, goalKey, rateKey] = zMap[zone];
@@ -150,6 +169,7 @@
         chart.data.datasets[0].data = [done, Math.max(0, goal - done)];
         chart.update();
       }
+
       document.getElementById('rejectCount').innerText = d[0]['거절/무시'];
       const rejectRate = parseFloat(d[0]['거절율']) * 100;
       const el = document.getElementById('rejectRate');
@@ -159,49 +179,57 @@
     }
 
     async function loadRiders() {
-      const res = await fetch("https://script.google.com/macros/s/AKfycbwunVvd137ADSK_Z33NweGm7rjPux2mAiCqadWlQaQwDFE7C3RQr_UjVoD_pp2V71Y3qw/exec");
-      let riders = await res.json();
+  const res = await fetch("https://script.google.com/macros/s/AKfycbwunVvd137ADSK_Z33NweGm7rjPux2mAiCqadWlQaQwDFE7C3RQr_UjVoD_pp2V71Y3qw/exec");
+  let riders = await res.json();
 
-      riders.forEach(r => {
-        const reject = Number(r['거절수']) || 0;
-        const total = Number(r['총완료수']) || 0;
-        r._rate = (reject + total) > 0 ? (reject / (reject + total)) * 100 : 0;
-      });
+  riders.forEach(r => {
+    const reject = Number(r['거절수']) || 0;
+    const total = Number(r['총완료수']) || 0;
+    r._rate = (reject + total) > 0 ? (reject / (reject + total)) * 100 : 0;
+  });
 
-      riders.sort((a, b) => b._rate - a._rate);
+  riders.sort((a, b) => b._rate - a._rate);
 
-      const tbody = document.querySelector('#riderTable tbody');
-      tbody.innerHTML = '';
-      riders.forEach(row => {
-        const name = row['이름'] ? row['이름'].slice(0, 1) + '**' : '';
-        const phone = row['전화번호']?.toString().slice(-4) || '';
-        const reject = Number(row['거절수']) || 0;
-        const total = Number(row['총완료수']) || 0;
-        const rate = row._rate;
-        const tr = document.createElement('tr');
-        tr.setAttribute('data-name', name);
-        tr.setAttribute('data-phone', phone);
-        tr.innerHTML = `
-          <td>${name}</td><td>${phone}</td>
-          <td>${row['논피크']}</td><td>${row['점심피크']}</td><td>${row['저녁피크']}</td>
-          <td>${total}</td><td>${reject}</td>
-          <td style="color: ${rate >= 10 ? '#e74c3c' : '#000'}; font-weight: ${rate >= 10 ? 'bold' : 'normal'};">
-            ${rate.toFixed(1)}% ${rate >= 10 ? '<span class="shake">😡</span>' : ''}
-          </td>`;
-        tbody.appendChild(tr);
-      });
+  const tbody = document.querySelector('#riderTable tbody');
+  tbody.innerHTML = '';
 
-      document.getElementById('searchInput').addEventListener('input', function () {
-        const value = this.value.trim();
-        const rows = tbody.querySelectorAll('tr');
-        rows.forEach(row => {
-          const name = row.getAttribute('data-name');
-          const phone = row.getAttribute('data-phone');
-          const match = name.includes(value) || phone.includes(value);
-          row.style.display = match || value === '' ? '' : 'none';
-        });
-      });
-    }
+  riders.forEach(row => {
+    const isOnline = row['온라인'] === '온라인';
+    const icon = isOnline ? '🟢 ' : '⚪ ';
+    const name = row['이름'] ? icon + row['이름'].slice(0, 1) + '**' : '';
+    const phone = row['전화번호']?.toString().slice(-4) || '';
+    const reject = Number(row['거절수']) || 0;
+    const total = Number(row['총완료수']) || 0;
+    const rate = row._rate;
+
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-name', name);
+    tr.setAttribute('data-phone', phone);
+
+    tr.innerHTML = `
+      <td>${name}</td><td>${phone}</td>
+      <td>${row['논피크']}</td><td>${row['점심피크']}</td><td>${row['저녁피크']}</td>
+      <td>${total}</td><td>${reject}</td>
+      <td style="color: ${rate >= 10 ? '#e74c3c' : '#000'}; font-weight: ${rate >= 10 ? 'bold' : 'normal'};">
+        ${rate.toFixed(1)}% ${rate >= 10 ? '<span class="shake">😡</span>' : ''}
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('searchInput').addEventListener('input', function () {
+    const value = this.value.trim();
+    const rows = tbody.querySelectorAll('tr');
+    rows.forEach(row => {
+      const name = row.getAttribute('data-name');
+      const phone = row.getAttribute('data-phone');
+      const match = name.includes(value) || phone.includes(value);
+      row.style.display = match || value === '' ? '' : 'none';
+    });
+  });
+}
+
   </script>
 </body>
 </html>
