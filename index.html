@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FLEX대시보드 메인</title>
+  <title>분당동부 대시보드 메인</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     td, th { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
@@ -70,10 +70,10 @@
   </style>
 </head>
 <body>
-  <div id="loading">🛵 플렉스라이더스님이 데이터를 배달 중입니다<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
+  <div id="loading">🛵 라이더님이 데이터를 배달 중입니다<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
 
-  <h2>피크별 일간 대시보드</h2>
-  <div id="updatedTime">업데이트 시간: -</div>
+  <h2>분당동부 대시보드</h2>
+  <div id="updatedTime">업데이트 시간</div>
   <div class="center-box" id="currentDataBox">
     <div class="title" id="currentTimeLabel">현재 시간대</div>
     <div style="width: 100%; max-width: 300px;">
@@ -99,7 +99,7 @@
   </div>
 
   <div class="section-title">기사별 통계</div>
-  <div id="riderStatus">기사 현황: -</div>
+  <div id="riderStatus">온라인 현황: -</div>
   <input type="text" id="searchInput" placeholder="이름 또는 전화번호 끝자리 검색" style="width: 100%; padding: 0.5rem; margin-bottom: 1rem; font-size: 1rem; border: 1px solid #ccc; border-radius: 8px;">
   <div style="overflow-x: auto">
     <table id="riderTable" style="width: 100%; border-collapse: collapse; font-size: 0.9rem; text-align: center;">
@@ -229,6 +229,76 @@
     });
   });
 }
+
+// ✅ 카드 전체에 도장 추가
+function addSuccessStampToCard(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const rateSpan = el.querySelector('span:last-child');
+  if (!rateSpan) return;
+  const rate = parseFloat(rateSpan.innerText.replace('%', ''));
+  if (rate >= 100) {
+    const stamp = document.createElement('div');
+    stamp.textContent = '성공!🎉';
+    stamp.style.marginTop = '0.5rem';
+    stamp.style.fontWeight = 'bold';
+    stamp.style.color = '#2ecc71';
+    stamp.style.fontSize = '1.1rem';
+    el.appendChild(stamp);
+  }
+}
+
+function addSuccessStampToMainBox(rate, zone) {
+  const canvas = document.getElementById('completionChart');
+  const container = canvas.parentNode;
+  if (!canvas || !container) return;
+
+  if (rate >= 100 && zone === '밤 논피크') {
+    canvas.style.display = 'none';
+
+    const message = document.createElement('div');
+    message.innerHTML = `
+      <div style="
+        background: #ffffff;
+        border: 2px dashed #2ecc71;
+        border-radius: 12px;
+        padding: 1.2rem;
+        text-align: center;
+        color: #2c3e50;
+        font-weight: 600;
+        font-size: 1rem;
+        line-height: 1.6;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        margin-top: 1.5rem;
+      ">
+         오늘하루 수고하셨습니다<br/>
+        내일도 출근자분들 잘 나와주시면 감사하겠습니다!🙏
+      </div>
+    `;
+
+    container.appendChild(message);
+  }
+}
+
+const oldLoadMain = loadMain;
+loadMain = async function() {
+  await oldLoadMain();
+  addSuccessStampToCard('아침 논피크');
+  addSuccessStampToCard('점심 피크');
+  addSuccessStampToCard('오후 논피크');
+  addSuccessStampToCard('저녁 피크');
+  addSuccessStampToCard('밤 논피크');
+
+  const desc = document.getElementById('currentDesc').innerText;
+  const zone = document.getElementById('currentTimeLabel').innerText;
+  const match = desc.match(/([\d.]+)%/);
+  if (match) {
+    const rate = parseFloat(match[1]);
+    addSuccessStampToMainBox(rate, zone);
+  }
+};
+
+
 
   </script>
 </body>
